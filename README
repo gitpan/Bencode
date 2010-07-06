@@ -1,22 +1,13 @@
-Bencode
-
-This module implements the BitTorrent "bencode" serialisation format,
-as described in L<http://www.bittorrent.org/protocol.html>.
 
 
-INSTALLATION
+This archive contains the distribution Bencode,
+version 1.4:
 
-To install this module, run the following commands:
+  BitTorrent serialisation format
 
-    perl Build.PL
-    ./Build
-    ./Build test
-    ./Build install
+This software is copyright (c) 2010 by Aristotle Pagaltzis.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 
-COPYRIGHT AND LICENCE
-
-Copyright (C) 2006, Aristotle Pagaltzis
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.

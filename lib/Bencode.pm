@@ -1,11 +1,14 @@
 package Bencode;
+BEGIN {
+  $Bencode::VERSION = '1.4';
+}
 use strict;
 use Carp;
 use Exporter;
 
-use vars qw( $VERSION @ISA @EXPORT_OK $DEBUG $do_lenient_decode );
+# ABSTRACT: BitTorrent serialisation format
 
-$VERSION = '1.31';
+use vars qw( $VERSION @ISA @EXPORT_OK $DEBUG $do_lenient_decode $max_depth );
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( bencode bdecode );
@@ -17,7 +20,8 @@ sub _bdecode_string {
 	if ( m/ \G ( 0 | [1-9] \d* ) : /xgc ) {
 		my $len = $1;
 
-		croak _msg 'unexpected end of string data starting at %s' if $len > length() - pos();
+		croak _msg 'unexpected end of string data starting at %s'
+			if $len > length() - pos();
 
 		my $str = substr $_, pos(), $len;
 		pos() = pos() + $len;
@@ -40,6 +44,8 @@ sub _bdecode_string {
 sub _bdecode_chunk {
 	warn _msg 'decoding at %s' if $DEBUG;
 
+	local $max_depth = $max_depth - 1 if defined $max_depth;
+
 	if ( defined( my $str = _bdecode_string() ) ) {
 		return $str;
 	}
@@ -54,6 +60,10 @@ sub _bdecode_chunk {
 	}
 	elsif ( m/ \G l /xgc ) {
 		warn _msg 'LIST' if $DEBUG;
+
+		croak _msg 'nesting depth exceeded at %s'
+			if defined $max_depth and $max_depth < 0;
+
 		my @list;
 		until ( m/ \G e /xgc ) {
 			warn _msg 'list not terminated at %s, looking for another element' if $DEBUG;
@@ -63,6 +73,10 @@ sub _bdecode_chunk {
 	}
 	elsif ( m/ \G d /xgc ) {
 		warn _msg 'DICT' if $DEBUG;
+
+		croak _msg 'nesting depth exceeded at %s'
+			if defined $max_depth and $max_depth < 0;
+
 		my $last_key;
 		my %hash;
 		until ( m/ \G e /xgc ) {
@@ -96,6 +110,7 @@ sub _bdecode_chunk {
 sub bdecode {
 	local $_ = shift;
 	local $do_lenient_decode = shift;
+	local $max_depth = shift;
 	my $deserialised_data = _bdecode_chunk();
 	croak _msg 'trailing garbage at %s' if $_ !~ m/ \G \z /xgc;
 	return $deserialised_data;
@@ -129,7 +144,9 @@ sub bencode {
 
 bdecode( 'i1e' );
 
-__END__
+
+
+=pod
 
 =head1 NAME
 
@@ -137,8 +154,7 @@ Bencode - BitTorrent serialisation format
 
 =head1 VERSION
 
-This document describes Bencode version 1.0
-
+version 1.4
 
 =head1 SYNOPSIS
 
@@ -148,11 +164,9 @@ This document describes Bencode version 1.0
  print $bencoded, "\n";
  my $decoded = bdecode $bencoded;
 
-
 =head1 DESCRIPTION
 
 This module implements the BitTorrent I<bencode> serialisation format as described in L<http://www.bittorrent.org/protocol.html>.
-
 
 =head1 INTERFACE 
 
@@ -162,11 +176,13 @@ Takes a single argument which may be a scalar or a reference to a scalar, array 
 
 Croaks on unhandled data types.
 
-=head2 C<bdecode( $string [, $do_lenient_decode ] )>
+=head2 C<bdecode( $string [, $do_lenient_decode [, $max_depth ] ] )>
 
 Takes a string and returns the corresponding deserialised data structure.
 
-If you pass a true value for the second option, it will disregard the sort order of dict keys. This violation of the I<becode> format is somewhat common.
+If you pass a true value for the second option, it will disregard the sort order of dict keys. This violation of the I<bencode> format is somewhat common.
+
+If you pass an integer for the third option, it will croak when attempting to parse dictionaries nested deeper than this level, to prevent DoS attacks using maliciously crafted input.
 
 Croaks on malformed data.
 
@@ -216,6 +232,10 @@ Your data violates the I<bencode> format constaint that all dict keys be strings
 
 Your data contains a dictionary with an odd number of elements.
 
+=item C<nesting depth exceeded at %s>
+
+Your data contains dicts or lists that are nested deeper than the $max_depth passed to C<bdecode()>.
+
 =item C<unhandled data type>
 
 You are trying to serialise a data structure that consists of data types other than
@@ -236,32 +256,25 @@ The format does not support this.
 
 =back
 
-
 =head1 BUGS AND LIMITATIONS
 
 Strings and numbers are practically indistinguishable in Perl, so C<bencode()> has to resort to a heuristic to decide how to serialise a scalar. This cannot be fixed.
 
-Error reporting is currently suboptimal. Malformed strings or integers will throw a misleading C<trailing garbage> message instead of a more specific diagnostic.
-
-No bugs have been reported.
-
-Please report any bugs or feature requests to C<bug-bencode@rt.cpan.org>, or through the web interface at L<http://rt.cpan.org>.
-
+Please report any bugs or feature requests through the web interface at L<http://github.com/ap/Bencode/issues>.
 
 =head1 AUTHOR
 
-Aristotle Pagaltzis  L<mailto:pagaltzis@gmx.de>
+  Aristotle Pagaltzis <pagaltzis@gmx.de>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2010 by Aristotle Pagaltzis.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
 
 
-=head1 LICENCE AND COPYRIGHT
+__END__
 
-Copyright (c) 2006, Aristotle Pagaltzis. All rights reserved.
-
-This module is free software; you can redistribute it and/or modify it under the same terms as Perl itself. See L<perlartistic>.
-
-
-=head1 DISCLAIMER OF WARRANTY
-
-BECAUSE THIS SOFTWARE IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY FOR THE SOFTWARE, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES PROVIDE THE SOFTWARE "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH YOU. SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR, OR CORRECTION.
-
-IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR REDISTRIBUTE THE SOFTWARE AS PERMITTED BY THE ABOVE LICENCE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE SOFTWARE (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE SOFTWARE TO OPERATE WITH ANY OTHER SOFTWARE), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
