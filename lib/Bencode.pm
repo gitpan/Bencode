@@ -1,17 +1,15 @@
-package Bencode;
-BEGIN {
-  $Bencode::VERSION = '1.4';
-}
+use 5.006;
 use strict;
-use Carp;
-use Exporter;
+use warnings;
 
+package Bencode;
+$Bencode::VERSION = '1.401';
 # ABSTRACT: BitTorrent serialisation format
 
-use vars qw( $VERSION @ISA @EXPORT_OK $DEBUG $do_lenient_decode $max_depth );
+use Carp;
+use Exporter::Tidy all => [qw( bencode bdecode )];
 
-@ISA = qw( Exporter );
-@EXPORT_OK = qw( bencode bdecode );
+our ( $DEBUG, $do_lenient_decode, $max_depth );
 
 sub _msg { sprintf "@_", pos() || 0 }
 
@@ -144,9 +142,11 @@ sub bencode {
 
 bdecode( 'i1e' );
 
-
+__END__
 
 =pod
+
+=encoding UTF-8
 
 =head1 NAME
 
@@ -154,7 +154,7 @@ Bencode - BitTorrent serialisation format
 
 =head1 VERSION
 
-version 1.4
+version 1.401
 
 =head1 SYNOPSIS
 
@@ -166,9 +166,9 @@ version 1.4
 
 =head1 DESCRIPTION
 
-This module implements the BitTorrent I<bencode> serialisation format as described in L<http://www.bittorrent.org/protocol.html>.
+This module implements the BitTorrent I<bencode> serialisation format as described in L<http://www.bittorrent.org/beps/bep_0003.html#bencoding>.
 
-=head1 INTERFACE 
+=head1 INTERFACE
 
 =head2 C<bencode( $datastructure )>
 
@@ -264,17 +264,13 @@ Please report any bugs or feature requests through the web interface at L<http:/
 
 =head1 AUTHOR
 
-  Aristotle Pagaltzis <pagaltzis@gmx.de>
+Aristotle Pagaltzis <pagaltzis@gmx.de>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2010 by Aristotle Pagaltzis.
+This software is copyright (c) 2015 by Aristotle Pagaltzis.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
-
-__END__
-
